@@ -1,46 +1,104 @@
-import time
-import random
-import sys
 import math
+import time
+import sys
 
-def gerar_grafo_aleatorio(qtd_vertices, qtd_arestas):
+# Mapeamento dos bairros para índices
+indice = {
+    'A': 0,
+    'B': 1,
+    'C': 2,
+    'D': 3,
+    'E': 4,
+    'F': 5
+}
+rotulo = {v: k for k, v in indice.items()}  # inverso, se precisar exibir
+
+def construir_matriz_adjacencia_6():
     """
-    Gera um conjunto de arestas aleatórias (sem repetição) para um grafo não direcionado.
-    Retorna uma lista de tuplas (u, v).
+    Constrói a matriz de adjacência 6x6 de acordo com a tabela:
+      A-B (4 km), A-C (2 km), B-D (5 km), C-D (8 km), C-E (3 km),
+      D-F (6 km), E-F (1 km).
+    Para BFS, só importa 'existência' de aresta, mas vamos marcar
+    com peso=1 e inf para 'sem aresta'.
     """
-    # Garante que não gere mais arestas que o máximo possível (grafo simples)
-    max_arestas = qtd_vertices * (qtd_vertices - 1) // 2
-    if qtd_arestas > max_arestas:
-        qtd_arestas = max_arestas
-
-    arestas_possiveis = []
-    for u in range(qtd_vertices):
-        for v in range(u + 1, qtd_vertices):
-            arestas_possiveis.append((u, v))
-
-    # Embaralha e pega as primeiras qtd_arestas
-    random.shuffle(arestas_possiveis)
-    arestas_selecionadas = arestas_possiveis[:qtd_arestas]
-
-    return arestas_selecionadas
-
-# -----------------------------------------------------------------------------
-# 1) Matriz de Adjacência
-# -----------------------------------------------------------------------------
-def construir_matriz_adjacencia(qtd_vertices, lista_arestas):
-    matriz = [[math.inf]*qtd_vertices for _ in range(qtd_vertices)]
-    for i in range(qtd_vertices):
+    n = 6
+    matriz = [[math.inf]*n for _ in range(n)]
+    
+    # Distância pra si mesmo = 0
+    for i in range(n):
         matriz[i][i] = 0
+    
+    # Basta marcar que existe aresta quando a tabela diz que há conexão
+    # A->B (4 km) => como BFS não liga para pesos, poderíamos pôr 1. 
+    # Aqui farei peso=1 para "existe aresta".
+    
+    # A (0) - B (1)
+    matriz[0][1] = 1
+    matriz[1][0] = 1
+    
+    # A (0) - C (2)
+    matriz[0][2] = 1
+    matriz[2][0] = 1
+    
+    # B (1) - D (3)
+    matriz[1][3] = 1
+    matriz[3][1] = 1
+    
+    # C (2) - D (3)
+    matriz[2][3] = 1
+    matriz[3][2] = 1
+    
+    # C (2) - E (4)
+    matriz[2][4] = 1
+    matriz[4][2] = 1
+    
+    # D (3) - F (5)
+    matriz[3][5] = 1
+    matriz[5][3] = 1
+    
+    # E (4) - F (5)
+    matriz[4][5] = 1
+    matriz[5][4] = 1
 
-    for (u, v) in lista_arestas:
-        # Vamos atribuir peso 1 a todas as arestas para simplificar
-        matriz[u][v] = 1
-        matriz[v][u] = 1
     return matriz
 
+def construir_lista_adjacencia_6():
+    """
+    Constrói a lista de adjacência equivalente, baseado na mesma tabela.
+    """
+    n = 6
+    # Inicialmente, cada vértice sem vizinhos
+    lista_adj = [[] for _ in range(n)]
+    
+    # A->B, A->C
+    lista_adj[0].append(1)
+    lista_adj[1].append(0)
+    lista_adj[0].append(2)
+    lista_adj[2].append(0)
+    
+    # B->D
+    lista_adj[1].append(3)
+    lista_adj[3].append(1)
+    
+    # C->D, C->E
+    lista_adj[2].append(3)
+    lista_adj[3].append(2)
+    lista_adj[2].append(4)
+    lista_adj[4].append(2)
+    
+    # D->F
+    lista_adj[3].append(5)
+    lista_adj[5].append(3)
+    
+    # E->F
+    lista_adj[4].append(5)
+    lista_adj[5].append(4)
+    
+    return lista_adj
+
 def bfs_matriz_adjacencia(matriz, vertice_inicial):
-    qtd_vertices = len(matriz)
-    visitados = [False]*qtd_vertices
+    n = len(matriz)
+    visitados = [False]*n
     fila = [vertice_inicial]
     visitados[vertice_inicial] = True
     resultado = []
@@ -48,37 +106,20 @@ def bfs_matriz_adjacencia(matriz, vertice_inicial):
     while fila:
         u = fila.pop(0)
         resultado.append(u)
-        # Verifica todos os outros vértices
-        for v in range(qtd_vertices):
-            # Se houver aresta (matriz[u][v] != inf) e não visitado
+        for v in range(n):
+            # Se houver aresta (matriz[u][v] != inf) e não foi visitado
             if matriz[u][v] != math.inf and not visitados[v]:
                 visitados[v] = True
                 fila.append(v)
     return resultado
 
-def existe_aresta_matriz(matriz, u, v):
-    """
-    Retorna True se existir aresta (peso != inf), False caso contrário.
-    """
-    return (matriz[u][v] != math.inf)
-
-# -----------------------------------------------------------------------------
-# 2) Lista de Adjacência
-# -----------------------------------------------------------------------------
-def construir_lista_adjacencia(qtd_vertices, lista_arestas):
-    lista_adj = [[] for _ in range(qtd_vertices)]
-    for (u, v) in lista_arestas:
-        lista_adj[u].append(v)
-        lista_adj[v].append(u)
-    return lista_adj
-
 def bfs_lista_adjacencia(lista_adj, vertice_inicial):
-    qtd_vertices = len(lista_adj)
-    visitados = [False]*qtd_vertices
+    n = len(lista_adj)
+    visitados = [False]*n
     fila = [vertice_inicial]
     visitados[vertice_inicial] = True
     resultado = []
-
+    
     while fila:
         u = fila.pop(0)
         resultado.append(u)
@@ -88,99 +129,65 @@ def bfs_lista_adjacencia(lista_adj, vertice_inicial):
                 fila.append(v)
     return resultado
 
+def existe_aresta_matriz(matriz, u, v):
+    return (matriz[u][v] != math.inf)
+
 def existe_aresta_lista(lista_adj, u, v):
+    return (v in lista_adj[u])
+
+def comparar_representacoes_tabela():
     """
-    Retorna True se v está na lista de adjacência de u, False caso contrário.
+    Constrói a matriz e a lista de adjacência para as 6 estações (A-F),
+    executa BFS a partir de A (índice 0) e compara tempos, 
+    também testa a existência de aresta para diversos pares.
     """
-    return v in lista_adj[u]
+    print("\n=== COMPARANDO COM A TABELA DE 6 BAIRROS ===")
 
-# -----------------------------------------------------------------------------
-# 3) Função de teste/comparação
-# -----------------------------------------------------------------------------
-def comparar_representacoes(qtd_vertices, qtd_arestas, qtd_consultas=1000):
-    """
-    - Gera um grafo aleatório com qtd_vertices e qtd_arestas.
-    - Constrói Matriz e Lista de Adjacência, medindo tempo e memória.
-    - Executa BFS, medindo tempo.
-    - Verifica existência de aresta entre pares aleatórios, medindo tempo.
-    """
-    print(f"\n=== COMPARANDO GRAFO ALEATÓRIO ===")
-    print(f"Vértices: {qtd_vertices}, Arestas: {qtd_arestas}\n")
+    # Constrói matriz e lista
+    matriz = construir_matriz_adjacencia_6()
+    lista_adj = construir_lista_adjacencia_6()
 
-    # 1) Gera as arestas
+    # 1) Medir tempo de BFS em cada
+    vertice_inicial = 0  # A
     t0 = time.time()
-    lista_arestas = gerar_grafo_aleatorio(qtd_vertices, qtd_arestas)
-    t1 = time.time()
-    print(f"[Geração das arestas] Tempo: {t1 - t0:.6f} s")
-
-    # 2) Constrói Matriz de Adjacência
-    t0 = time.time()
-    matriz = construir_matriz_adjacencia(qtd_vertices, lista_arestas)
-    t1 = time.time()
-    tempo_construcao_matriz = t1 - t0
-    memoria_matriz = sys.getsizeof(matriz)  # Aproximação (não soma aninhada)
-
-    # 3) Constrói Lista de Adjacência
-    t0 = time.time()
-    lista_adj = construir_lista_adjacencia(qtd_vertices, lista_arestas)
-    t1 = time.time()
-    tempo_construcao_lista = t1 - t0
-    memoria_lista = sys.getsizeof(lista_adj)  # Aproximação
-
-    print("--- Construção ---")
-    print(f"Matriz de Adjacência: tempo={tempo_construcao_matriz:.6f}s, memória~{memoria_matriz} bytes")
-    print(f"Lista de Adjacência:  tempo={tempo_construcao_lista:.6f}s, memória~{memoria_lista} bytes")
-
-    # 4) BFS em cada representação (a partir de um vértice aleatório)
-    vertice_inicial = random.randint(0, qtd_vertices - 1)
-    t0 = time.time()
-    _ = bfs_matriz_adjacencia(matriz, vertice_inicial)
+    visita_matriz = bfs_matriz_adjacencia(matriz, vertice_inicial)
     t1 = time.time()
     tempo_bfs_matriz = t1 - t0
 
     t0 = time.time()
-    _ = bfs_lista_adjacencia(lista_adj, vertice_inicial)
+    visita_lista = bfs_lista_adjacencia(lista_adj, vertice_inicial)
     t1 = time.time()
     tempo_bfs_lista = t1 - t0
 
     print("--- BFS ---")
-    print(f"Matriz: BFS (inicial={vertice_inicial}) -> {tempo_bfs_matriz:.6f}s")
-    print(f"Lista:  BFS (inicial={vertice_inicial}) -> {tempo_bfs_lista:.6f}s")
+    print(f"BFS na Matriz (inicial=A=0): tempo={tempo_bfs_matriz:.6f}s, ordem visita={visita_matriz}")
+    print(f"BFS na Lista  (inicial=A=0): tempo={tempo_bfs_lista:.6f}s, ordem visita={visita_lista}")
 
-    # 5) Verificação da existência de aresta em pares aleatórios
-    consultas = []
-    for _ in range(qtd_consultas):
-        x = random.randint(0, qtd_vertices - 1)
-        y = random.randint(0, qtd_vertices - 1)
-        consultas.append((x, y))
-
-    t0 = time.time()
+    # 2) Verificar aresta em alguns pares
+    consultas = [(0,1), (0,5), (2,4), (3,5)]
+    print("\n--- Teste de existência de aresta ---")
     for (x, y) in consultas:
-        existe_aresta_matriz(matriz, x, y)
-    t1 = time.time()
-    tempo_existe_matriz = t1 - t0
+        em = existe_aresta_matriz(matriz, x, y)
+        el = existe_aresta_lista(lista_adj, x, y)
+        print(f"Aresta {rotulo[x]}-{rotulo[y]}? Matriz={em}, Lista={el}")
 
-    t0 = time.time()
-    for (x, y) in consultas:
-        existe_aresta_lista(lista_adj, x, y)
-    t1 = time.time()
-    tempo_existe_lista = t1 - t0
+    # 3) Comparação de uso de memória
+    memoria_matriz = sys.getsizeof(matriz) 
+    memoria_lista = sys.getsizeof(lista_adj)
+    print(f"\n--- Uso de memória (aproximado) ---")
+    print(f"Matriz: ~{memoria_matriz} bytes")
+    print(f"Lista:  ~{memoria_lista} bytes")
 
-    print(f"--- {qtd_consultas} consultas de existência de aresta ---")
-    print(f"Matriz: {tempo_existe_matriz:.6f}s")
-    print(f"Lista:  {tempo_existe_lista:.6f}s")
+def main():
+    # Comparar representações com a Tabela de 6 bairros (A-F)
+    comparar_representacoes_tabela()
 
-# -----------------------------------------------------------------------------
-# 4) Executando
-# -----------------------------------------------------------------------------
+    # Se quiser, pode continuar chamando os testes de grafos grandes/esparsos/densos
+    # Aqui só dou exemplo de "como ficaria" se quisesse reutilizar o código original
+    #
+    # from exercicio_original import comparar_representacoes
+    # comparar_representacoes(qtd_vertices=2000, qtd_arestas=3000, qtd_consultas=10000)
+    # comparar_representacoes(qtd_vertices=2000, qtd_arestas=1500000, qtd_consultas=10000)
+
 if __name__ == "__main__":
-    # Teste 1: Grafo pequeno (6 vértices, 7 arestas)
-    comparar_representacoes(qtd_vertices=6, qtd_arestas=7, qtd_consultas=1000)
-
-    # Teste 2: Grafo maior e mais "esparso"
-    comparar_representacoes(qtd_vertices=2000, qtd_arestas=3000, qtd_consultas=10000)
-
-    # Teste 3: Grafo maior e "denso" (perto do máximo de arestas)
-    # Máximo de arestas (não direcionado) ~ V*(V-1)/2 = 2000*1999/2 = 1.999.000
-    # Vamos usar algo menor, mas ainda grande, p/ não demorar tanto
-    comparar_representacoes(qtd_vertices=2000, qtd_arestas=1500000, qtd_consultas=10000)
+    main()
